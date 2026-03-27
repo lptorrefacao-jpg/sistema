@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+@media print {
+  /* Reset all layout constraints for printing */
+  body, html, #root {
+    height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+    display: block !important;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Ensure layout containers don't clip content */
+  .flex, .h-screen, main, aside, div {
+    height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+  }
+
+  /* Hide everything by default in print */
+  .print\:hidden, aside, header, nav, button, .no-print {
+    display: none !important;
+  }
+
+  /* Only show the print-specific content */
+  .print-only {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  /* Ensure the print view is visible */
+  .print\:block {
+    display: block !important;
+  }
+}

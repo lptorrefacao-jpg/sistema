@@ -1,0 +1,240 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: users
+// Document ID: {userId}
+// Fields:
+//   - uid: string (required)
+//   - displayName: string
+//   - email: string (required)
+//   - photoURL: string
+//   - role: string (admin/user)
+//
+// Collection: inventory
+// Document ID: {productId}
+// Fields:
+//   - name: string (required)
+//   - description: string
+//   - price: number (required)
+//   - quantity: int (required)
+//   - category: string
+//   - updatedAt: timestamp
+//
+// Collection: inventory/{productId}/batches
+// Document ID: {batchId}
+// Fields:
+//   - purchaseId: string
+//   - quantity: int (required)
+//   - initialQuantity: int (required)
+//   - costPrice: number (required)
+//   - createdAt: timestamp (required)
+//
+// Collection: sales
+// Document ID: {saleId}
+// Fields:
+//   - date: timestamp (required)
+//   - items: list (required)
+//   - total: number (required)
+//   - clientId: string
+//   - clientName: string
+//
+// Collection: purchases
+// Document ID: {purchaseId}
+// Fields:
+//   - date: timestamp (required)
+//   - supplier: string
+//   - items: list (required)
+//   - total: number (required)
+//
+// Collection: clients
+// Document ID: {clientId}
+// Fields:
+//   - name: string (required)
+//   - email: string
+//   - phone: string
+//   - address: string
+//
+// Collection: tasks
+// Document ID: {taskId}
+// Fields:
+//   - title: string (required)
+//   - description: string
+//   - status: string (todo/in-progress/done)
+//   - dueDate: timestamp
+//   - assignedTo: string
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "lptorrefacao@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['uid', 'displayName', 'email', 'photoURL', 'role']) &&
+             data.uid is string && data.email is string && isValidEmail(data.email);
+    }
+
+    function isValidProduct(data) {
+      return hasOnlyAllowedFields(['name', 'description', 'price', 'quantity', 'category', 'updatedAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.price is number && data.price >= 0 &&
+             data.quantity is int && data.quantity >= 0;
+    }
+
+    function isValidBatch(data) {
+      return hasOnlyAllowedFields(['purchaseId', 'quantity', 'initialQuantity', 'costPrice', 'createdAt']) &&
+             data.quantity is int && data.quantity >= 0 &&
+             data.initialQuantity is int && data.initialQuantity >= 0 &&
+             data.costPrice is number && data.costPrice >= 0 &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidSale(data) {
+      return hasOnlyAllowedFields(['date', 'items', 'total', 'totalCost', 'clientId', 'clientName', 'paymentMethod']) &&
+             data.date is timestamp &&
+             data.items is list &&
+             data.total is number && data.total >= 0 &&
+             data.paymentMethod in ['cash', 'credit'];
+    }
+
+    function isValidPurchase(data) {
+      return hasOnlyAllowedFields(['date', 'supplier', 'items', 'total', 'paymentMethod']) &&
+             data.date is timestamp &&
+             data.supplier is string &&
+             data.items is list &&
+             data.total is number && data.total >= 0 &&
+             data.paymentMethod in ['cash', 'credit'];
+    }
+
+    function isValidClient(data) {
+      return hasOnlyAllowedFields(['name', 'email', 'phone', 'address', 'balance']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.balance is number;
+    }
+
+    function isValidSupplier(data) {
+      return hasOnlyAllowedFields(['name', 'email', 'phone', 'address', 'balance']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.balance is number;
+    }
+
+    function isValidSaleReturn(data) {
+      return hasOnlyAllowedFields(['saleId', 'date', 'items', 'total', 'totalCost', 'clientId', 'clientName', 'reason', 'refundMethod']) &&
+             data.date is timestamp &&
+             data.items is list &&
+             data.total is number && data.total >= 0 &&
+             data.refundMethod in ['cash', 'credit'];
+    }
+
+    function isValidTask(data) {
+      return hasOnlyAllowedFields(['title', 'description', 'status', 'dueDate', 'assignedTo']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.status in ['todo', 'in-progress', 'done'];
+    }
+
+    function isValidTransaction(data) {
+      return hasOnlyAllowedFields(['date', 'type', 'category', 'description', 'amount', 'relatedId', 'relatedType', 'clientId', 'supplierId', 'paymentMethod']) &&
+             data.date is timestamp &&
+             data.type in ['income', 'expense'] &&
+             data.amount is number && data.amount >= 0;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data);
+    }
+
+    match /inventory/{productId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidProduct(request.resource.data);
+
+      match /batches/{batchId} {
+        allow read: if isAuthenticated();
+        allow write: if isAdmin() && isValidBatch(request.resource.data);
+      }
+    }
+
+    match /sales/{saleId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidSale(request.resource.data);
+      allow update: if isAdmin() && isValidSale(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /purchases/{purchaseId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin() && isValidPurchase(request.resource.data);
+      allow update: if isAdmin() && isValidPurchase(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /sales_returns/{returnId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidSaleReturn(request.resource.data);
+      allow update: if isAdmin() && isValidSaleReturn(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidTransaction(request.resource.data);
+      allow update: if isAdmin() && isValidTransaction(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isValidTask(request.resource.data);
+    }
+
+    match /clients/{clientId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isValidClient(request.resource.data);
+    }
+
+    match /suppliers/{supplierId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isValidSupplier(request.resource.data);
+    }
+  }
+}

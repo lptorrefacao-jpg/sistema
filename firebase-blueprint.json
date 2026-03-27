@@ -1,0 +1,149 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "user"] }
+      },
+      "required": ["uid", "email"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Inventory product details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "quantity": { "type": "integer" },
+        "category": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "price", "quantity"]
+    },
+    "Batch": {
+      "title": "Batch",
+      "description": "Stock batch for PEPS/FIFO",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "purchaseId": { "type": "string" },
+        "quantity": { "type": "integer" },
+        "initialQuantity": { "type": "integer" },
+        "costPrice": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["quantity", "initialQuantity", "costPrice", "createdAt"]
+    },
+    "Purchase": {
+      "title": "Purchase",
+      "description": "Purchase transaction record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "supplier": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": { "type": "string" },
+              "name": { "type": "string" },
+              "quantity": { "type": "integer" },
+              "costPrice": { "type": "number" }
+            }
+          }
+        },
+        "total": { "type": "number" }
+      },
+      "required": ["date", "items", "total"]
+    },
+      "Sale": {
+      "title": "Sale",
+      "description": "Sales transaction record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": { "type": "string" },
+              "name": { "type": "string" },
+              "quantity": { "type": "integer" },
+              "price": { "type": "number" },
+              "costPrice": { "type": "number" }
+            }
+          }
+        },
+        "total": { "type": "number" },
+        "totalCost": { "type": "number" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" }
+      },
+      "required": ["date", "items", "total"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "Customer information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "balance": { "type": "number" }
+      },
+      "required": ["name"]
+    },
+    "Supplier": {
+      "title": "Supplier",
+      "description": "Supplier information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "balance": { "type": "number" }
+      },
+      "required": ["name"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Business task management",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["todo", "in-progress", "done"] },
+        "dueDate": { "type": "string", "format": "date-time" },
+        "assignedTo": { "type": "string" }
+      },
+      "required": ["title", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": { "schema": "User", "description": "User profiles" },
+    "/inventory/{productId}": { "schema": "Product", "description": "Inventory items" },
+    "/inventory/{productId}/batches/{batchId}": { "schema": "Batch", "description": "Product batches for FIFO" },
+    "/sales/{saleId}": { "schema": "Sale", "description": "Sales records" },
+    "/purchases/{purchaseId}": { "schema": "Purchase", "description": "Purchase records" },
+    "/clients/{clientId}": { "schema": "Client", "description": "Customer database" },
+    "/suppliers/{supplierId}": { "schema": "Supplier", "description": "Supplier database" },
+    "/tasks/{taskId}": { "schema": "Task", "description": "Business tasks" }
+  }
+}
